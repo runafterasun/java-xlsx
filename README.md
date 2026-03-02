@@ -2,10 +2,11 @@
 
 ## Что это?
 
-Библиотека для импорта данных из Excel-файлов (`.xlsx`) по шаблону.
-Шаблон описывает **где** искать данные (через маркеры в ячейках), а import-файл содержит **сами данные**.
+Библиотека для **импорта и экспорта** данных из/в Excel-файлы (`.xlsx`) по шаблону.
+Шаблон описывает **где** находятся данные (через маркеры в ячейках).
 
-Под капотом используется [fastexcel-reader](https://github.com/dhatim/fastexcel).
+Под капотом используется [fastexcel](https://github.com/dhatim/fastexcel) (чтение и запись данных)
+и [Apache POI](https://poi.apache.org/) (потоковое чтение стилей из шаблона).
 
 ---
 
@@ -57,6 +58,70 @@ dependencies {
 
 - Ключи без префикса `for.` → **одиночный объект** (читается один раз).
 - Ключи с префиксом `for.` → **список объектов** (читаются все строки под заголовком).
+
+---
+
+## Источники шаблонов
+
+Маркеры могут быть описаны двумя способами.
+
+### Excel-шаблон
+
+Создайте `.xlsx`-файл, где в нужных ячейках стоят маркеры (`test.account`, `for.list.rate` и т. д.).
+Строка **над** loop-маркером считается заголовком столбца.
+
+```java
+// tmpl — шаблонный файл с маркерами, data — файл с данными
+ExcelImportUtil.importExcel(importParam, tmpl, data);
+```
+
+### JSON-шаблон
+
+Альтернатива Excel-шаблону — JSON-файл, описывающий те же маркеры:
+
+```json
+{
+  "entries": [
+    { "fieldName": "test.account",       "sheetName": "Sheet1", "cellAddress": {"row": 3, "col": 0} },
+    { "fieldName": "for.list.rate",      "sheetName": "Sheet1", "headerName": "RATE" },
+    { "fieldName": "for.list.date",      "sheetName": "Sheet1", "headerName": "DATE" }
+  ]
+}
+```
+
+| Поле          | Обязателен | Описание                                          |
+|---------------|-----------|---------------------------------------------------|
+| `fieldName`   | да        | Маркер вида `ключ.поле`                           |
+| `sheetName`   | да        | Имя листа                                         |
+| `headerName`  | *         | Текст заголовка столбца (HEADER mode)             |
+| `cellAddress` | *         | Координаты ячейки `{"row": N, "col": N}` (POSITION mode) |
+
+\* Нужно хотя бы одно из двух. Если указан `headerName` — используется HEADER mode.
+
+```java
+var reader = new JsonTemplateReader(new FileInputStream("template.json"));
+ExcelImportUtil.importExcel(importParam, reader, data);
+```
+
+---
+
+## Режимы привязки колонок (BindingMode)
+
+Применяется только к loop-блокам (`for.`-ключи).
+
+| Режим      | Как находит колонку                                             |
+|------------|----------------------------------------------------------------|
+| `HEADER`   | Сканирует import-файл и ищет ячейку с текстом `headerName` (до 100 строк). **По умолчанию.** |
+| `POSITION` | Берёт координаты маркера напрямую из шаблона, без поиска.      |
+
+```java
+// Явно задать режим (только при использовании Excel-шаблона;
+// JSON-шаблон определяет режим автоматически)
+importParam.getParamsMap().put("for.list",
+    new ImportInformation()
+        .setClazz(MyRow.class)
+        .setBindingMode(BindingMode.POSITION));
+```
 
 ---
 
@@ -138,9 +203,31 @@ if (!missing.isEmpty()) {
 
 ---
 
+## Предупреждения (warnings)
+
+Некритичные проблемы (например, поле из шаблона отсутствует в целевом классе) не бросают исключение, а попадают в список предупреждений:
+
+```java
+ExcelImportUtil.importExcel(importParam, tmpl, data);
+
+List<String> warnings = importParam.getWarnings();
+if (!warnings.isEmpty()) {
+    warnings.forEach(System.out::println);
+}
+```
+
+---
+
 ## Как обрабатываются ошибки?
 
-Все ошибки оборачиваются в `ExcelImportException` (`ru.objectsfill.exception`) с контекстным сообщением.
+Критичные ошибки оборачиваются в специализированные исключения с контекстным сообщением:
+
+| Исключение              | Когда бросается                  |
+|-------------------------|----------------------------------|
+| `ExcelImportException`  | Ошибка при чтении / импорте      |
+| `ExcelExportException`  | Ошибка при записи / экспорте     |
+
+Оба находятся в пакете `ru.objectsfill.exception` и наследуются от `RuntimeException`.
 
 ```java
 try (InputStream tmpl = ...; InputStream data = ...) {
@@ -148,7 +235,86 @@ try (InputStream tmpl = ...; InputStream data = ...) {
 } catch (ExcelImportException e) {
     log.error("Ошибка импорта: {}", e.getMessage(), e);
 }
+
+try (InputStream tmpl = ...; OutputStream out = ...) {
+    ExcelExportUtil.exportExcelWithStyles(exportParam, tmpl, out);
+} catch (ExcelExportException e) {
+    log.error("Ошибка экспорта: {}", e.getMessage(), e);
+}
 ```
+
+---
+
+## Как настроить экспорт?
+
+```java
+// 1. Создаём контейнер параметров экспорта
+var exportParam = new ExcelExportParamCore();
+
+// 2. Регистрируем данные по тем же ключам, что использовались в шаблоне
+exportParam.getParamsMap().put("test",
+    new ExportInformation().setDataList(List.of(myObject)));
+exportParam.getParamsMap().put("for.dateList",
+    new ExportInformation().setDataList(myRows));
+
+// 3. Запускаем экспорт — в качестве шаблона можно использовать Excel или JSON
+try (InputStream tmpl = ...; OutputStream out = ...) {
+    ExcelExportUtil.exportExcel(exportParam, tmpl, out);
+}
+
+// 4. Проверяем предупреждения
+exportParam.getWarnings().forEach(System.out::println);
+```
+
+### Как выглядит результат (Вариант A)
+
+Строка маркера заменяется **первой строкой данных**. Последующие строки записываются ниже.
+
+```
+Строка N−1:  | DESTINATION | RATE |   ← заголовки (из headerName)
+Строка N:    | Germany     | 0.05 |   ← первый объект (на месте маркера)
+Строка N+1:  | France      | 0.03 |   ← второй объект
+```
+
+Если `headerName` не задан (POSITION mode), заголовки не записываются.
+
+### Экспорт со стилями
+
+Метод `exportExcelWithStyles` переносит стили ячеек одиночных объектов из шаблона в результат.
+Apache POI читает шаблон **потоково** (SAX), не загружая весь файл в память — обрабатываются только первые N строк.
+
+```java
+// По умолчанию читаются стили из первых 100 строк шаблона
+try (InputStream tmpl = ...; OutputStream out = ...) {
+    ExcelExportUtil.exportExcelWithStyles(exportParam, tmpl, out);
+}
+
+// Кастомная глубина чтения стилей
+try (InputStream tmpl = ...; OutputStream out = ...) {
+    ExcelExportUtil.exportExcelWithStyles(exportParam, tmpl, out, 50);
+}
+```
+
+| Что переносится               | Поддержка |
+|-------------------------------|-----------|
+| Жирный, курсив, подчёркивание | ✓         |
+| Шрифт, размер, цвет шрифта    | ✓         |
+| Цвет фона (заливка)           | ✓         |
+| Границы (thin, medium, thick…)| ✓         |
+| Числовой формат               | ✓         |
+| Горизонтальное выравнивание   | ✓         |
+| Перенос текста                | ✓         |
+| Условное форматирование       | ✗         |
+| Формулы                       | ✗         |
+
+> Стили применяются только к ячейкам **одиночных объектов**.
+> Табличные строки (loop) записываются без стилей — намеренно.
+
+### Ограничения экспорта
+
+- При использовании `exportExcel` (без стилей) создаётся файл с «голыми» значениями.
+- Если `cellAddress` не задан для маркера — поле пропускается с предупреждением.
+- При экспорте с несколькими листами данные loop-блока записываются на **каждый** лист, где шаблон содержит маркеры этого блока.
 
 ---
 
