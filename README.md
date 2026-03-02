@@ -127,22 +127,135 @@ importParam.getParamsMap().put("for.list",
 
 ## Как настроить импорт?
 
+Импорт работает с двумя файлами: **шаблон** описывает расположение данных через маркеры,
+**файл данных** содержит реальные значения в тех же позициях (или под теми же заголовками).
+
+### Шаг 1 — Подготовьте класс данных
+
+Класс должен иметь публичный конструктор без аргументов и setter-методы вида `setFieldName()`.
+Имена полей класса должны совпадать с именами после точки в маркерах шаблона.
+
 ```java
-// 1. Создаём контейнер параметров
-var importParam = new ExcelImportParamCore();
-
-// 2. Регистрируем объекты по ключам
-importParam.getParamsMap().put("test",          new ImportInformation().setClazz(MyObject.class));
-importParam.getParamsMap().put("for.dateList",  new ImportInformation().setClazz(MyRow.class));
-
-// 3. Запускаем импорт
-try (InputStream tmpl = ...; InputStream data = ...) {
-    ExcelImportUtil.importExcel(importParam, tmpl, data);
+// Маркер "test.account" → поле account → вызов setAccount(value)
+public class MyObject {
+    private String account;
+    private String offerDate;
+    // getters / setters
 }
 
-// 4. Получаем результаты
+// Маркер "for.dateList.rate" → поле rate → вызов setRate(value)
+public class MyRow {
+    private String origin;
+    private String destination;
+    private String rate;
+    // getters / setters
+}
+```
+
+### Шаг 2 — Создайте контейнер параметров
+
+```java
+var importParam = new ExcelImportParamCore();
+```
+
+### Шаг 3 — Зарегистрируйте классы по ключам
+
+Ключ — это часть маркера **до последней точки**. Он должен совпадать с тем, что записано в шаблоне.
+
+```java
+// одиночный объект — маркеры вида "test.account", "test.offerDate"
+importParam.getParamsMap().put("test",
+    new ImportInformation().setClazz(MyObject.class));
+
+// loop-список — маркеры вида "for.dateList.origin", "for.dateList.rate"
+importParam.getParamsMap().put("for.dateList",
+    new ImportInformation().setClazz(MyRow.class));
+```
+
+### Шаг 4 — Запустите импорт
+
+**Через Excel-шаблон:**
+
+```java
+try (InputStream tmpl = new FileInputStream("template.xlsx");
+     InputStream data = new FileInputStream("data.xlsx")) {
+    ExcelImportUtil.importExcel(importParam, tmpl, data);
+}
+```
+
+**Через JSON-шаблон:**
+
+```java
+try (InputStream tmpl = new FileInputStream("template.json");
+     InputStream data = new FileInputStream("data.xlsx")) {
+    ExcelImportUtil.importExcel(importParam, new JsonTemplateReader(tmpl), data);
+}
+```
+
+### Шаг 5 — Получите результаты
+
+```java
+// одиночный объект — всегда один элемент в списке
 MyObject obj = (MyObject) importParam.getParamsMap().get("test").getLoopLst().get(0);
+
+// loop-список — все прочитанные строки
 List<Object> rows = importParam.getParamsMap().get("for.dateList").getLoopLst();
+for (Object row : rows) {
+    MyRow myRow = (MyRow) row;
+    System.out.println(myRow.getOrigin() + " → " + myRow.getDestination());
+}
+```
+
+---
+
+## Привязка к листам
+
+Библиотека сопоставляет маркеры шаблона и данные **по имени листа**.
+Лист в файле данных должен называться так же, как лист в шаблоне.
+
+### Excel-шаблон
+
+Имя листа определяется автоматически: библиотека сканирует все листы шаблона
+и запоминает, на каком листе был найден каждый маркер.
+
+```
+template.xlsx:
+  Лист "Summary"  → маркеры test.account, test.offerDate
+  Лист "Pricelist" → маркеры for.dateList.origin, for.dateList.rate
+
+data.xlsx:
+  Лист "Summary"   → ячейки с реальными значениями
+  Лист "Pricelist" → строки с реальными данными
+```
+
+### JSON-шаблон
+
+Имя листа задаётся явно в поле `sheetName` каждой записи:
+
+```json
+{
+  "entries": [
+    { "fieldName": "test.account",        "sheetName": "Summary",   "cellAddress": {"row": 2, "col": 1} },
+    { "fieldName": "for.dateList.origin", "sheetName": "Pricelist", "headerName": "ORIGIN" },
+    { "fieldName": "for.dateList.rate",   "sheetName": "Pricelist", "headerName": "RATE" }
+  ]
+}
+```
+
+> Если в файле данных нет листа с нужным именем — данные для этого листа не читаются,
+> исключение не бросается.
+
+### Несколько листов с одним ключом
+
+Один ключ (например `for.dateList`) может встречаться на нескольких листах шаблона.
+Результаты со всех листов **объединяются** в один список `getLoopLst()`.
+
+```
+template.xlsx:
+  Лист "Sheet1" → for.dateList.rate
+  Лист "Sheet2" → for.dateList.rate
+
+// После импорта: getLoopLst() содержит строки с обоих листов
 ```
 
 ---
