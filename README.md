@@ -247,36 +247,100 @@ try (InputStream tmpl = ...; OutputStream out = ...) {
 
 ## Как настроить экспорт?
 
+Экспорт использует тот же шаблон, что и импорт: маркеры в ячейках указывают, **куда** записывать данные.
+Поддерживаются оба источника шаблонов — Excel-файл и JSON.
+
+### Шаг 1 — Подготовьте классы данных
+
+Классы должны иметь публичный конструктор без аргументов и getter-методы вида `getFieldName()`.
+Те же классы, что используются при импорте, подходят и для экспорта без изменений.
+
 ```java
-// 1. Создаём контейнер параметров экспорта
-var exportParam = new ExcelExportParamCore();
-
-// 2. Регистрируем данные по тем же ключам, что использовались в шаблоне
-exportParam.getParamsMap().put("test",
-    new ExportInformation().setDataList(List.of(myObject)));
-exportParam.getParamsMap().put("for.dateList",
-    new ExportInformation().setDataList(myRows));
-
-// 3. Запускаем экспорт — в качестве шаблона можно использовать Excel или JSON
-try (InputStream tmpl = ...; OutputStream out = ...) {
-    ExcelExportUtil.exportExcel(exportParam, tmpl, out);
+public class MyObject {
+    private String account;
+    private String offerDate;
+    // getters / setters
 }
 
-// 4. Проверяем предупреждения
-exportParam.getWarnings().forEach(System.out::println);
+public class MyRow {
+    private String origin;
+    private String destination;
+    private String rate;
+    // getters / setters
+}
 ```
+
+### Шаг 2 — Создайте контейнер параметров
+
+```java
+var exportParam = new ExcelExportParamCore();
+```
+
+### Шаг 3 — Зарегистрируйте данные по ключам шаблона
+
+Ключи должны совпадать с теми, что используются в шаблоне (без имени поля после точки).
+
+```java
+// одиночный объект — ключ без префикса "for."
+exportParam.getParamsMap().put("test",
+    new ExportInformation().setDataList(List.of(myObject)));
+
+// loop-список — ключ с префиксом "for."
+exportParam.getParamsMap().put("for.dateList",
+    new ExportInformation().setDataList(myRows));
+```
+
+> `setDataList` принимает `List<Object>`. Для одиночного объекта передайте список из одного элемента.
+
+### Шаг 4 — Запустите экспорт
+
+**Через Excel-шаблон:**
+
+```java
+try (InputStream tmpl = new FileInputStream("template.xlsx");
+     OutputStream out = new FileOutputStream("result.xlsx")) {
+    ExcelExportUtil.exportExcel(exportParam, tmpl, out);
+}
+```
+
+**Через JSON-шаблон:**
+
+```java
+try (InputStream tmpl = new FileInputStream("template.json");
+     OutputStream out = new FileOutputStream("result.xlsx")) {
+    ExcelExportUtil.exportExcel(exportParam, new JsonTemplateReader(tmpl), out);
+}
+```
+
+### Шаг 5 — Проверьте предупреждения
+
+Некоторые ситуации не прерывают экспорт, а фиксируются в списке предупреждений:
+- поле маркера отсутствует в классе данных;
+- для маркера не задан `cellAddress` (поле пропускается).
+
+```java
+List<String> warnings = exportParam.getWarnings();
+if (!warnings.isEmpty()) {
+    warnings.forEach(System.out::println);
+}
+```
+
+---
 
 ### Как выглядит результат (Вариант A)
 
 Строка маркера заменяется **первой строкой данных**. Последующие строки записываются ниже.
 
 ```
-Строка N−1:  | DESTINATION | RATE |   ← заголовки (из headerName)
-Строка N:    | Germany     | 0.05 |   ← первый объект (на месте маркера)
-Строка N+1:  | France      | 0.03 |   ← второй объект
+Строка N−1:  | ORIGIN | DESTINATION | RATE |   ← заголовки (из headerName)
+Строка N:    | RU     | DE          | 0.05 |   ← первый объект (на месте маркера)
+Строка N+1:  | US     | FR          | 0.12 |   ← второй объект
+Строка N+2:  | CN     | GB          | 0.08 |   ← третий объект
 ```
 
-Если `headerName` не задан (POSITION mode), заголовки не записываются.
+Если `headerName` не задан (POSITION mode), строка заголовков не записывается.
+
+---
 
 ### Экспорт со стилями
 
@@ -285,13 +349,15 @@ Apache POI читает шаблон **потоково** (SAX), не загру
 
 ```java
 // По умолчанию читаются стили из первых 100 строк шаблона
-try (InputStream tmpl = ...; OutputStream out = ...) {
+try (InputStream tmpl = new FileInputStream("template.xlsx");
+     OutputStream out = new FileOutputStream("result.xlsx")) {
     ExcelExportUtil.exportExcelWithStyles(exportParam, tmpl, out);
 }
 
-// Кастомная глубина чтения стилей
-try (InputStream tmpl = ...; OutputStream out = ...) {
-    ExcelExportUtil.exportExcelWithStyles(exportParam, tmpl, out, 50);
+// Кастомная глубина чтения стилей (если маркеры ниже 100-й строки)
+try (InputStream tmpl = new FileInputStream("template.xlsx");
+     OutputStream out = new FileOutputStream("result.xlsx")) {
+    ExcelExportUtil.exportExcelWithStyles(exportParam, tmpl, out, 200);
 }
 ```
 
@@ -310,9 +376,12 @@ try (InputStream tmpl = ...; OutputStream out = ...) {
 > Стили применяются только к ячейкам **одиночных объектов**.
 > Табличные строки (loop) записываются без стилей — намеренно.
 
+---
+
 ### Ограничения экспорта
 
-- При использовании `exportExcel` (без стилей) создаётся файл с «голыми» значениями.
+- При использовании `exportExcel` (без стилей) создаётся файл с «голыми» значениями — без форматирования шаблона.
+- `exportExcelWithStyles` работает только с Excel-шаблоном; JSON-шаблон стили не хранит.
 - Если `cellAddress` не задан для маркера — поле пропускается с предупреждением.
 - При экспорте с несколькими листами данные loop-блока записываются на **каждый** лист, где шаблон содержит маркеры этого блока.
 
