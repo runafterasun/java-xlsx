@@ -1,6 +1,9 @@
 package ru.objectsfill.model;
 
+import ru.objectsfill.enums.BindingMode;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -23,10 +26,18 @@ public class ImportInformation {
      * Карта маркеров, сгруппированных по имени листа.
      * Заполняется после анализа шаблона.
      */
-    private Map<String, List<FieldParam>> paramMap;
+    private Map<String, List<FieldParam>> paramMap = new HashMap<>();
 
     /** Список обязательных полей, которые должны быть найдены при импорте. */
     private List<String> requiredFields = new ArrayList<>();
+
+    /**
+     * Режим привязки колонок для loop-объектов.
+     * {@link BindingMode#HEADER} — привязка по заголовку (по умолчанию).
+     * {@link BindingMode#POSITION} — привязка по позиции маркера в шаблоне.
+     * На одиночные объекты не влияет.
+     */
+    private BindingMode bindingMode = BindingMode.HEADER;
 
     /**
      * Возвращает целевой класс для создания экземпляров при импорте.
@@ -125,6 +136,27 @@ public class ImportInformation {
      */
     public ImportInformation setRequiredFields(List<String> requiredFields) {
         this.requiredFields = requiredFields;
+        return this;
+    }
+
+    /**
+     * Возвращает режим привязки колонок для loop-объектов.
+     *
+     * @return режим привязки
+     */
+    public BindingMode getBindingMode() {
+        return bindingMode;
+    }
+
+    /**
+     * Устанавливает режим привязки колонок для loop-объектов.
+     * На одиночные объекты не влияет — они всегда читаются по позиции.
+     *
+     * @param bindingMode режим привязки
+     * @return текущий экземпляр для цепочки вызовов
+     */
+    public ImportInformation setBindingMode(BindingMode bindingMode) {
+        this.bindingMode = bindingMode;
         return this;
     }
 }
