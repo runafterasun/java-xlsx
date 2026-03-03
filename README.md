@@ -1,5 +1,23 @@
 # excel-read-write — FAQ
 
+## How to use
+From maven central <br>
+[![Latest Release](https://maven-badges.sml.io/sonatype-central/ru.objectsfill/excel-read-write/badge.svg?subject=Latest%20Release&color=blue)](https://central.sonatype.com/artifact/ru.objectsfill/excel-read-write)
+![Build Status](https://github.com/runafterasun/objects-fill-processor/actions/workflows/gradle.yml/badge.svg)
+
+```xml
+<dependency>
+    <groupId>ru.objectsfill</groupId>
+    <artifactId>excel-read-write</artifactId>
+    <version>x.x.x</version>
+</dependency>
+```
+
+```gradle
+testImplementation 'ru.objectsfill:excel-read-write:x.x.x'
+testAnnotationProcessor 'ru.objectsfill:excel-read-write:x.x.x'
+```
+
 ## Что это?
 
 Библиотека для **импорта и экспорта** данных из/в Excel-файлы (`.xlsx`) по шаблону.

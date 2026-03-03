@@ -85,9 +85,15 @@ jreleaser {
     signing {
         active = 'ALWAYS'
         armored = true
+        mode = 'FILE'
         passphrase = findProperty('signing.password') ?: ''
         publicKey = findProperty('signing.publicKey') ?: ''
         secretKey = findProperty('signing.secretKey') ?: ''
+    }
+    release {
+        github {
+            skipRelease = true
+        }
     }
     deploy {
         maven {
