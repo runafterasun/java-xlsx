@@ -1,7 +1,17 @@
 # excel-read-write — FAQ
 
-## How to use
-From maven central <br>
+## Что это?
+
+Библиотека для **импорта и экспорта** данных из/в Excel-файлы (`.xlsx`) по шаблону.
+Шаблон описывает **где** находятся данные (через маркеры в ячейках).
+
+Под капотом используется [fastexcel](https://github.com/dhatim/fastexcel) (чтение и запись данных)
+и [Apache POI](https://poi.apache.org/) (потоковое чтение стилей из шаблона).
+
+## Как подключить?
+
+## Через maven central
+Скачать с maven central <br>
 [![Latest Release](https://maven-badges.sml.io/sonatype-central/ru.objectsfill/excel-read-write/badge.svg?subject=Latest%20Release&color=blue)](https://central.sonatype.com/artifact/ru.objectsfill/excel-read-write)
 ![Build Status](https://github.com/runafterasun/objects-fill-processor/actions/workflows/gradle.yml/badge.svg)
 
@@ -18,17 +28,7 @@ testImplementation 'ru.objectsfill:excel-read-write:x.x.x'
 testAnnotationProcessor 'ru.objectsfill:excel-read-write:x.x.x'
 ```
 
-## Что это?
-
-Библиотека для **импорта и экспорта** данных из/в Excel-файлы (`.xlsx`) по шаблону.
-Шаблон описывает **где** находятся данные (через маркеры в ячейках).
-
-Под капотом используется [fastexcel](https://github.com/dhatim/fastexcel) (чтение и запись данных)
-и [Apache POI](https://poi.apache.org/) (потоковое чтение стилей из шаблона).
-
----
-
-## Как подключить?
+## Через maven local
 
 Опубликуйте библиотеку в Maven Local:
 
@@ -46,7 +46,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'ru.objectsfill:excel-read-write:0.0.1-SNAPSHOT'
+    implementation 'ru.objectsfill:excel-read-write:0.0.1'
 }
 ```
 
@@ -55,7 +55,7 @@ dependencies {
 <dependency>
     <groupId>ru.objectsfill</groupId>
     <artifactId>excel-read-write</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.0.1</version>
 </dependency>
 ```
 
