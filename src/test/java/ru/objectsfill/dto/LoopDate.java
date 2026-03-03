@@ -2,79 +2,43 @@ package ru.objectsfill.dto;
 
 public class LoopDate {
 
-    private String destination;
-    private String origin;
-    private String code;
-    private String route;
-    private String date;
-    private String rate;
-    private String change;
-    private String billing;
-
+    private String name;
+    private String age;
+    private String salaryDate;
+    private String salary;
     private Integer row;
 
-    public String getDestination() {
-        return destination;
+
+    public String getName() {
+        return name;
     }
 
-    public void setDestination(String destination) {
-        this.destination = destination;
+    public void setName(String name) {
+        this.name = name;
     }
 
-    public String getOrigin() {
-        return origin;
+    public String getAge() {
+        return age;
     }
 
-    public void setOrigin(String origin) {
-        this.origin = origin;
+    public void setAge(String age) {
+        this.age = age;
     }
 
-    public String getCode() {
-        return code;
+    public String getSalaryDate() {
+        return salaryDate;
     }
 
-    public void setCode(String code) {
-        this.code = code;
+    public void setSalaryDate(String salaryDate) {
+        this.salaryDate = salaryDate;
     }
 
-    public String getRoute() {
-        return route;
+    public String getSalary() {
+        return salary;
     }
 
-    public void setRoute(String route) {
-        this.route = route;
-    }
-
-    public String getDate() {
-        return date;
-    }
-
-    public void setDate(String date) {
-        this.date = date;
-    }
-
-    public String getRate() {
-        return rate;
-    }
-
-    public void setRate(String rate) {
-        this.rate = rate;
-    }
-
-    public String getChange() {
-        return change;
-    }
-
-    public void setChange(String change) {
-        this.change = change;
-    }
-
-    public String getBilling() {
-        return billing;
-    }
-
-    public void setBilling(String billing) {
-        this.billing = billing;
+    public void setSalary(String salary) {
+        this.salary = salary;
     }
 
     public Integer getRow() {
