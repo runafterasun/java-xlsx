@@ -1,16 +1,19 @@
 plugins {
-    id 'java'
+    id 'java-library'
     id 'maven-publish'
+    id 'org.jreleaser' version '1.23.0'
 }
 
 group = 'ru.objectsfill'
-version = '0.0.1-SNAPSHOT'
-description = 'excel-read-write'
+version = '0.0.1'
+description = 'Excel import/export library based on fastexcel and Apache POI'
 
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(17)
     }
+    withSourcesJar()
+    withJavadocJar()
 }
 
 configurations {
@@ -38,8 +41,65 @@ tasks.named('test') {
 
 publishing {
     publications {
-        mavenJava(MavenPublication) {
+        maven(MavenPublication) {
+            groupId = 'ru.objectsfill'
+            artifactId = 'excel-read-write'
+
             from components.java
+
+            pom {
+                name = 'excel-read-write'
+                description = 'Excel import/export library based on fastexcel and Apache POI'
+                url = 'https://github.com/runafterasun/java-xlsx'
+                inceptionYear = '2026'
+                licenses {
+                    license {
+                        name.set("The Apache License, Version 2.0")
+                        url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'Stereo'
+                        name = 'Igor Saenko'
+                        email = 'runafterasun@gmail.com'    // укажите email
+                    }
+                }
+                scm {
+                    connection = 'scm:git:https://github.com/runafterasun/java-xlsx.git'
+                    developerConnection = 'scm:git:ssh://github.com/runafterasun/java-xlsx.git'
+                    url = 'https://github.com/runafterasun/java-xlsx'
+                }
+            }
+        }
+    }
+
+    repositories {
+        maven {
+            url = layout.buildDirectory.dir('staging-deploy')
+        }
+    }
+}
+
+jreleaser {
+    signing {
+        active = 'ALWAYS'
+        armored = true
+        passphrase = findProperty('signing.password') ?: ''
+        publicKey = findProperty('signing.publicKey') ?: ''
+        secretKey = findProperty('signing.secretKey') ?: ''
+    }
+    deploy {
+        maven {
+            mavenCentral {
+                sonatype {
+                    active = 'ALWAYS'
+                    url = 'https://central.sonatype.com/api/v1/publisher'
+                    username = findProperty('ossrhUsername') ?: ''
+                    password = findProperty('ossrhPassword') ?: ''
+                    stagingRepository('build/staging-deploy')
+                }
+            }
         }
     }
 }
