@@ -51,10 +51,10 @@ dependencies {
 <ключ>.<поле>
 ```
 
-| Маркер             | Значение                                                    |
-|--------------------|-------------------------------------------------------------|
-| `test.account`     | Одиночный объект с ключом `test`, поле `account`           |
-| `for.dateList.rate`| Loop-список с ключом `for.dateList`, поле `rate`           |
+| Маркер              | Значение                                                      |
+|---------------------|---------------------------------------------------------------|
+| `test.company`      | Одиночный объект с ключом `test`, поле `company`             |
+| `for.user.salary`   | Loop-список с ключом `for.user`, поле `salary`               |
 
 - Ключи без префикса `for.` → **одиночный объект** (читается один раз).
 - Ключи с префиксом `for.` → **список объектов** (читаются все строки под заголовком).
@@ -67,7 +67,7 @@ dependencies {
 
 ### Excel-шаблон
 
-Создайте `.xlsx`-файл, где в нужных ячейках стоят маркеры (`test.account`, `for.list.rate` и т. д.).
+Создайте `.xlsx`-файл, где в нужных ячейках стоят маркеры (`test.company`, `for.user.salary` и т. д.).
 Строка **над** loop-маркером считается заголовком столбца.
 
 ```java
@@ -82,18 +82,18 @@ ExcelImportUtil.importExcel(importParam, tmpl, data);
 ```json
 {
   "entries": [
-    { "fieldName": "test.account",       "sheetName": "Sheet1", "cellAddress": {"row": 3, "col": 0} },
-    { "fieldName": "for.list.rate",      "sheetName": "Sheet1", "headerName": "RATE" },
-    { "fieldName": "for.list.date",      "sheetName": "Sheet1", "headerName": "DATE" }
+    { "fieldName": "test.company",     "sheetName": "List1", "cellAddress": {"row": 3, "col": 0} },
+    { "fieldName": "for.user.salary",  "sheetName": "List1", "headerName": "SALARY" },
+    { "fieldName": "for.user.age",     "sheetName": "List1", "headerName": "AGE" }
   ]
 }
 ```
 
-| Поле          | Обязателен | Описание                                          |
-|---------------|-----------|---------------------------------------------------|
-| `fieldName`   | да        | Маркер вида `ключ.поле`                           |
-| `sheetName`   | да        | Имя листа                                         |
-| `headerName`  | *         | Текст заголовка столбца (HEADER mode)             |
+| Поле          | Обязателен | Описание                                                  |
+|---------------|-----------|-----------------------------------------------------------|
+| `fieldName`   | да        | Маркер вида `ключ.поле`                                   |
+| `sheetName`   | да        | Имя листа                                                 |
+| `headerName`  | *         | Текст заголовка столбца (HEADER mode)                     |
 | `cellAddress` | *         | Координаты ячейки `{"row": N, "col": N}` (POSITION mode) |
 
 \* Нужно хотя бы одно из двух. Если указан `headerName` — используется HEADER mode.
@@ -109,17 +109,17 @@ ExcelImportUtil.importExcel(importParam, reader, data);
 
 Применяется только к loop-блокам (`for.`-ключи).
 
-| Режим      | Как находит колонку                                             |
-|------------|----------------------------------------------------------------|
+| Режим      | Как находит колонку                                                                      |
+|------------|------------------------------------------------------------------------------------------|
 | `HEADER`   | Сканирует import-файл и ищет ячейку с текстом `headerName` (до 100 строк). **По умолчанию.** |
-| `POSITION` | Берёт координаты маркера напрямую из шаблона, без поиска.      |
+| `POSITION` | Берёт координаты маркера напрямую из шаблона, без поиска.                                |
 
 ```java
 // Явно задать режим (только при использовании Excel-шаблона;
 // JSON-шаблон определяет режим автоматически)
-importParam.getParamsMap().put("for.list",
+importParam.getParamsMap().put("for.user",
     new ImportInformation()
-        .setClazz(MyRow.class)
+        .setClazz(User.class)
         .setBindingMode(BindingMode.POSITION));
 ```
 
@@ -136,18 +136,18 @@ importParam.getParamsMap().put("for.list",
 Имена полей класса должны совпадать с именами после точки в маркерах шаблона.
 
 ```java
-// Маркер "test.account" → поле account → вызов setAccount(value)
-public class MyObject {
-    private String account;
-    private String offerDate;
+// Маркер "test.company" → поле company → вызов setCompany(value)
+public class Company {
+    private String company;
     // getters / setters
 }
 
-// Маркер "for.dateList.rate" → поле rate → вызов setRate(value)
-public class MyRow {
-    private String origin;
-    private String destination;
-    private String rate;
+// Маркер "for.user.salary" → поле salary → вызов setSalary(value)
+public class User {
+    private String name;
+    private String age;
+    private String salaryDate;
+    private String salary;
     // getters / setters
 }
 ```
@@ -163,13 +163,13 @@ var importParam = new ExcelImportParamCore();
 Ключ — это часть маркера **до последней точки**. Он должен совпадать с тем, что записано в шаблоне.
 
 ```java
-// одиночный объект — маркеры вида "test.account", "test.offerDate"
+// одиночный объект — маркеры вида "test.company"
 importParam.getParamsMap().put("test",
-    new ImportInformation().setClazz(MyObject.class));
+    new ImportInformation().setClazz(Company.class));
 
-// loop-список — маркеры вида "for.dateList.origin", "for.dateList.rate"
-importParam.getParamsMap().put("for.dateList",
-    new ImportInformation().setClazz(MyRow.class));
+// loop-список — маркеры вида "for.user.name", "for.user.salary"
+importParam.getParamsMap().put("for.user",
+    new ImportInformation().setClazz(User.class));
 ```
 
 ### Шаг 4 — Запустите импорт
@@ -178,7 +178,7 @@ importParam.getParamsMap().put("for.dateList",
 
 ```java
 try (InputStream tmpl = new FileInputStream("template.xlsx");
-     InputStream data = new FileInputStream("data.xlsx")) {
+     InputStream data = new FileInputStream("template_data.xlsx")) {
     ExcelImportUtil.importExcel(importParam, tmpl, data);
 }
 ```
@@ -187,7 +187,7 @@ try (InputStream tmpl = new FileInputStream("template.xlsx");
 
 ```java
 try (InputStream tmpl = new FileInputStream("template.json");
-     InputStream data = new FileInputStream("data.xlsx")) {
+     InputStream data = new FileInputStream("template_data.xlsx")) {
     ExcelImportUtil.importExcel(importParam, new JsonTemplateReader(tmpl), data);
 }
 ```
@@ -196,13 +196,13 @@ try (InputStream tmpl = new FileInputStream("template.json");
 
 ```java
 // одиночный объект — всегда один элемент в списке
-MyObject obj = (MyObject) importParam.getParamsMap().get("test").getLoopLst().get(0);
+Company company = (Company) importParam.getParamsMap().get("test").getLoopLst().get(0);
 
 // loop-список — все прочитанные строки
-List<Object> rows = importParam.getParamsMap().get("for.dateList").getLoopLst();
+List<Object> rows = importParam.getParamsMap().get("for.user").getLoopLst();
 for (Object row : rows) {
-    MyRow myRow = (MyRow) row;
-    System.out.println(myRow.getOrigin() + " → " + myRow.getDestination());
+    User user = (User) row;
+    System.out.println(user.getName() + " — " + user.getSalary());
 }
 ```
 
@@ -220,12 +220,12 @@ for (Object row : rows) {
 
 ```
 template.xlsx:
-  Лист "Summary"  → маркеры test.account, test.offerDate
-  Лист "Pricelist" → маркеры for.dateList.origin, for.dateList.rate
+  Лист "List1" → маркеры test.company, for.user.name, for.user.salary, ...
+  Лист "List2" → маркеры for.user.name, for.user.salary, ...
 
-data.xlsx:
-  Лист "Summary"   → ячейки с реальными значениями
-  Лист "Pricelist" → строки с реальными данными
+template_data.xlsx:
+  Лист "List1" → ячейки с реальными значениями
+  Лист "List2" → строки с реальными данными
 ```
 
 ### JSON-шаблон
@@ -235,9 +235,9 @@ data.xlsx:
 ```json
 {
   "entries": [
-    { "fieldName": "test.account",        "sheetName": "Summary",   "cellAddress": {"row": 2, "col": 1} },
-    { "fieldName": "for.dateList.origin", "sheetName": "Pricelist", "headerName": "ORIGIN" },
-    { "fieldName": "for.dateList.rate",   "sheetName": "Pricelist", "headerName": "RATE" }
+    { "fieldName": "test.company",     "sheetName": "List1", "cellAddress": {"row": 3, "col": 0} },
+    { "fieldName": "for.user.name",    "sheetName": "List1", "headerName": "NAME" },
+    { "fieldName": "for.user.salary",  "sheetName": "List1", "headerName": "SALARY" }
   ]
 }
 ```
@@ -247,13 +247,13 @@ data.xlsx:
 
 ### Несколько листов с одним ключом
 
-Один ключ (например `for.dateList`) может встречаться на нескольких листах шаблона.
+Один ключ (например `for.user`) может встречаться на нескольких листах шаблона.
 Результаты со всех листов **объединяются** в один список `getLoopLst()`.
 
 ```
 template.xlsx:
-  Лист "Sheet1" → for.dateList.rate
-  Лист "Sheet2" → for.dateList.rate
+  Лист "List1" → for.user.name, for.user.salary
+  Лист "List2" → for.user.name, for.user.salary
 
 // После импорта: getLoopLst() содержит строки с обоих листов
 ```
@@ -264,18 +264,18 @@ template.xlsx:
 
 ### Одиночный объект
 
-| A               | B               |
-|-----------------|-----------------|
-| test.account    | test.offerDate  |
+| A            |
+|--------------|
+| test.company |
 
 Данные читаются из **тех же координат** в import-файле.
 
 ### Loop-список
 
-| A                    | B                    |
-|----------------------|----------------------|
-| Счёт                 | Дата                 |
-| for.list.account     | for.list.date        |
+| A            | B           | C                | D           |
+|--------------|-------------|------------------|-------------|
+| NAME         | AGE         | SALARY_DAY       | SALARY      |
+| for.user.name| for.user.age| for.user.salaryDate | for.user.salary |
 
 - Строка **над** маркером — заголовок столбца (по нему находится колонка в import-файле).
 - Все строки **под** заголовком в import-файле читаются в список.
@@ -284,11 +284,11 @@ template.xlsx:
 
 ## Какие типы данных поддерживаются?
 
-| Тип ячейки Excel | Поведение                                     |
-|-----------------|-----------------------------------------------|
-| `NUMBER`        | Значение конвертируется в `String` через `BigDecimal.toPlainString()` |
-| Любой другой    | Берётся `rawValue` ячейки как `String`        |
-| Дата (`m` в формате) | Конвертируется в строку через `LocalDateTime.toString()` |
+| Тип ячейки Excel      | Поведение                                                              |
+|-----------------------|------------------------------------------------------------------------|
+| `NUMBER`              | Значение конвертируется в `String` через `BigDecimal.toPlainString()` |
+| Любой другой          | Берётся `rawValue` ячейки как `String`                                |
+| Дата (`m` в формате)  | Конвертируется в строку через `LocalDateTime.toString()`              |
 
 Целевые поля объектов должны быть `String` или `Integer` (для служебного поля `row`).
 
@@ -298,17 +298,17 @@ template.xlsx:
 
 ```java
 var info = new ImportInformation()
-        .setClazz(MyRow.class)
-        .setRequiredFields(new ArrayList<>(List.of("account", "date")));
+        .setClazz(User.class)
+        .setRequiredFields(new ArrayList<>(List.of("name", "salary")));
 
-importParam.getParamsMap().put("for.list", info);
+importParam.getParamsMap().put("for.user", info);
 ```
 
 При обнаружении заголовка в import-файле поле удаляется из списка `requiredFields`.
 После импорта можно проверить, что список пуст:
 
 ```java
-List<String> missing = importParam.getParamsMap().get("for.list").getRequiredFields();
+List<String> missing = importParam.getParamsMap().get("for.user").getRequiredFields();
 if (!missing.isEmpty()) {
     throw new IllegalStateException("Не найдены обязательные поля: " + missing);
 }
@@ -369,16 +369,16 @@ try (InputStream tmpl = ...; OutputStream out = ...) {
 Те же классы, что используются при импорте, подходят и для экспорта без изменений.
 
 ```java
-public class MyObject {
-    private String account;
-    private String offerDate;
+public class Company {
+    private String company;
     // getters / setters
 }
 
-public class MyRow {
-    private String origin;
-    private String destination;
-    private String rate;
+public class User {
+    private String name;
+    private String age;
+    private String salaryDate;
+    private String salary;
     // getters / setters
 }
 ```
@@ -396,11 +396,11 @@ var exportParam = new ExcelExportParamCore();
 ```java
 // одиночный объект — ключ без префикса "for."
 exportParam.getParamsMap().put("test",
-    new ExportInformation().setDataList(List.of(myObject)));
+    new ExportInformation().setDataList(List.of(company)));
 
 // loop-список — ключ с префиксом "for."
-exportParam.getParamsMap().put("for.dateList",
-    new ExportInformation().setDataList(myRows));
+exportParam.getParamsMap().put("for.user",
+    new ExportInformation().setDataList(users));
 ```
 
 > `setDataList` принимает `List<Object>`. Для одиночного объекта передайте список из одного элемента.
@@ -445,10 +445,10 @@ if (!warnings.isEmpty()) {
 Строка маркера заменяется **первой строкой данных**. Последующие строки записываются ниже.
 
 ```
-Строка N−1:  | ORIGIN | DESTINATION | RATE |   ← заголовки (из headerName)
-Строка N:    | RU     | DE          | 0.05 |   ← первый объект (на месте маркера)
-Строка N+1:  | US     | FR          | 0.12 |   ← второй объект
-Строка N+2:  | CN     | GB          | 0.08 |   ← третий объект
+Строка N−1:  | NAME  | AGE | SALARY_DAY | SALARY |   ← заголовки (из headerName)
+Строка N:    | Alice | 30  | 2025-01-01 | 550    |   ← первый объект (на месте маркера)
+Строка N+1:  | Bob   | 25  | 2025-02-01 | 430    |   ← второй объект
+Строка N+2:  | Carol | 35  | 2025-03-01 | 670    |   ← третий объект
 ```
 
 Если `headerName` не задан (POSITION mode), строка заголовков не записывается.

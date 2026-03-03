@@ -17,60 +17,39 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Интеграционные тесты чтения через JSON-шаблон.
  *
- * Структура шаблона выявлена из 02_RateModNotice_tmpl.xlsx (ExcelTemplateReader):
+ * Структура шаблона выявлена из template.xlsx (ExcelTemplateReader):
  *
- * Лист "Pricelist":
- *   test.account      row=3  col=0
- *   test.offerDate    row=4  col=0
- *   test.currency     row=5  col=0
- *   test.product      row=6  col=0
- *   test.rateModNumber row=6 col=4
- *   for.dateList.*    row=10, headerNames: DESTINATION, ORIGIN, COUNTRY CODE,
- *                     ROUTE TEL PREFIX, EFFECTIVE DATE, RATE, CHANGE, BILLING INCREMENTS
+ * Лист "List1":
+ *   test.company      row=3  col=0
+ *   for.user.*        headerNames: NAME, AGE, SALARY_DAY, SALARY
  *
- * Лист "Лист3":
- *   for.dateList.*    row=1, те же headerNames (без RATE)
+ * Лист "List2":
+ *   for.user.*        те же headerNames
  */
 class JsonTemplateIntegrationTest {
 
-    private static final String PRICELIST_SINGLE_JSON = """
+    private static final String LIST1_SINGLE_JSON = """
             {"entries": [
-              {"fieldName": "test.account",       "sheetName": "Pricelist", "cellAddress": {"row": 3, "col": 0}},
-              {"fieldName": "test.offerDate",     "sheetName": "Pricelist", "cellAddress": {"row": 4, "col": 0}},
-              {"fieldName": "test.currency",      "sheetName": "Pricelist", "cellAddress": {"row": 5, "col": 0}},
-              {"fieldName": "test.product",       "sheetName": "Pricelist", "cellAddress": {"row": 6, "col": 0}},
-              {"fieldName": "test.rateModNumber", "sheetName": "Pricelist", "cellAddress": {"row": 6, "col": 4}}
+              {"fieldName": "test.company", "sheetName": "List1", "cellAddress": {"row": 3, "col": 0}}
             ]}
             """;
 
-    private static final String PRICELIST_DATELIST_JSON = """
+    private static final String LIST1_USER_JSON = """
             {"entries": [
-              {"fieldName": "for.dateList.origin",      "sheetName": "Pricelist", "headerName": "DESTINATION"},
-              {"fieldName": "for.dateList.destination", "sheetName": "Pricelist", "headerName": "ORIGIN"},
-              {"fieldName": "for.dateList.code",        "sheetName": "Pricelist", "headerName": "COUNTRY CODE"},
-              {"fieldName": "for.dateList.route",       "sheetName": "Pricelist", "headerName": "ROUTE TEL PREFIX"},
-              {"fieldName": "for.dateList.date",        "sheetName": "Pricelist", "headerName": "EFFECTIVE DATE"},
-              {"fieldName": "for.dateList.rate",        "sheetName": "Pricelist", "headerName": "RATE"},
-              {"fieldName": "for.dateList.change",      "sheetName": "Pricelist", "headerName": "CHANGE"},
-              {"fieldName": "for.dateList.billing",     "sheetName": "Pricelist", "headerName": "BILLING INCREMENTS"}
+              {"fieldName": "for.user.name",       "sheetName": "List1", "headerName": "NAME"},
+              {"fieldName": "for.user.age",        "sheetName": "List1", "headerName": "AGE"},
+              {"fieldName": "for.user.salaryDate", "sheetName": "List1", "headerName": "SALARY_DAY"},
+              {"fieldName": "for.user.salary",     "sheetName": "List1", "headerName": "SALARY"}
             ]}
             """;
 
-    private static final String PRICELIST_COMBINED_JSON = """
+    private static final String LIST1_COMBINED_JSON = """
             {"entries": [
-              {"fieldName": "test.account",             "sheetName": "Pricelist", "cellAddress": {"row": 3, "col": 0}},
-              {"fieldName": "test.offerDate",           "sheetName": "Pricelist", "cellAddress": {"row": 4, "col": 0}},
-              {"fieldName": "test.currency",            "sheetName": "Pricelist", "cellAddress": {"row": 5, "col": 0}},
-              {"fieldName": "test.product",             "sheetName": "Pricelist", "cellAddress": {"row": 6, "col": 0}},
-              {"fieldName": "test.rateModNumber",       "sheetName": "Pricelist", "cellAddress": {"row": 6, "col": 4}},
-              {"fieldName": "for.dateList.origin",      "sheetName": "Pricelist", "headerName": "DESTINATION"},
-              {"fieldName": "for.dateList.destination", "sheetName": "Pricelist", "headerName": "ORIGIN"},
-              {"fieldName": "for.dateList.code",        "sheetName": "Pricelist", "headerName": "COUNTRY CODE"},
-              {"fieldName": "for.dateList.route",       "sheetName": "Pricelist", "headerName": "ROUTE TEL PREFIX"},
-              {"fieldName": "for.dateList.date",        "sheetName": "Pricelist", "headerName": "EFFECTIVE DATE"},
-              {"fieldName": "for.dateList.rate",        "sheetName": "Pricelist", "headerName": "RATE"},
-              {"fieldName": "for.dateList.change",      "sheetName": "Pricelist", "headerName": "CHANGE"},
-              {"fieldName": "for.dateList.billing",     "sheetName": "Pricelist", "headerName": "BILLING INCREMENTS"}
+              {"fieldName": "test.company",        "sheetName": "List1", "cellAddress": {"row": 3, "col": 0}},
+              {"fieldName": "for.user.name",       "sheetName": "List1", "headerName": "NAME"},
+              {"fieldName": "for.user.age",        "sheetName": "List1", "headerName": "AGE"},
+              {"fieldName": "for.user.salaryDate", "sheetName": "List1", "headerName": "SALARY_DAY"},
+              {"fieldName": "for.user.salary",     "sheetName": "List1", "headerName": "SALARY"}
             ]}
             """;
 
@@ -84,14 +63,10 @@ class JsonTemplateIntegrationTest {
     @Test
     void singleObject_positionBinding_allFieldsFilled() throws Exception {
         var param = buildParam();
-        runImport(PRICELIST_SINGLE_JSON, param);
+        runImport(LIST1_SINGLE_JSON, param);
 
         ExcelImport result = (ExcelImport) param.getParamsMap().get("test").getLoopLst().get(0);
-        assertNotNull(result.getAccount(),       "account");
-        assertNotNull(result.getOfferDate(),     "offerDate");
-        assertNotNull(result.getCurrency(),      "currency");
-        assertNotNull(result.getProduct(),       "product");
-        assertNotNull(result.getRateModNumber(), "rateModNumber");
+        assertNotNull(result.getCompany(), "company");
     }
 
     /**
@@ -101,21 +76,17 @@ class JsonTemplateIntegrationTest {
     @Test
     void singleObject_jsonMatchesExcelTemplate() throws Exception {
         var jsonParam = buildParam();
-        runImport(PRICELIST_SINGLE_JSON, jsonParam);
+        runImport(LIST1_SINGLE_JSON, jsonParam);
         ExcelImport fromJson = (ExcelImport) jsonParam.getParamsMap().get("test").getLoopLst().get(0);
 
         var xlsParam = buildParam();
-        try (InputStream tmpl = resource("02_RateModNotice_tmpl.xlsx");
-             InputStream data = resource("01_RateModNotice_tmpl.xlsx")) {
+        try (InputStream tmpl = resource("template.xlsx");
+             InputStream data = resource("template_data.xlsx")) {
             ExcelImportUtil.importExcel(xlsParam, tmpl, data);
         }
         ExcelImport fromXls = (ExcelImport) xlsParam.getParamsMap().get("test").getLoopLst().get(0);
 
-        assertEquals(fromXls.getAccount(),       fromJson.getAccount(),       "account");
-        assertEquals(fromXls.getOfferDate(),     fromJson.getOfferDate(),     "offerDate");
-        assertEquals(fromXls.getCurrency(),      fromJson.getCurrency(),      "currency");
-        assertEquals(fromXls.getProduct(),       fromJson.getProduct(),       "product");
-        assertEquals(fromXls.getRateModNumber(), fromJson.getRateModNumber(), "rateModNumber");
+        assertEquals(fromXls.getCompany(), fromJson.getCompany(), "company");
     }
 
     // =================== loop list ===================
@@ -123,26 +94,26 @@ class JsonTemplateIntegrationTest {
     /**
      * JSON-шаблон с привязкой по заголовку (HEADER).
      * Маркеры для loop-списка описаны через headerName.
-     * После импорта список dateList должен быть непустым.
+     * После импорта список должен быть непустым.
      */
     @Test
     void loopList_headerBinding_listIsPopulated() throws Exception {
         var param = buildParam();
-        runImport(PRICELIST_DATELIST_JSON, param);
+        runImport(LIST1_USER_JSON, param);
 
-        List<Object> loopLst = param.getParamsMap().get("for.dateList").getLoopLst();
+        List<Object> loopLst = param.getParamsMap().get("for.user").getLoopLst();
         assertFalse(loopLst.isEmpty(), "loop list must not be empty");
     }
 
     /**
-     * Loop-список, прочитанный через JSON-шаблон (только лист Pricelist),
-     * должен быть непустым и содержать разумное количество строк.
+     * Loop-список, прочитанный через JSON-шаблон (только лист List1),
+     * должен быть непустым.
      */
     @Test
     void loopList_jsonSizeMatchesExcelTemplate() throws Exception {
         var jsonParam = buildParam();
-        runImport(PRICELIST_DATELIST_JSON, jsonParam);
-        int jsonSize = jsonParam.getParamsMap().get("for.dateList").getLoopLst().size();
+        runImport(LIST1_USER_JSON, jsonParam);
+        int jsonSize = jsonParam.getParamsMap().get("for.user").getLoopLst().size();
 
         assertTrue(jsonSize > 0, "JSON loop list must not be empty");
     }
@@ -154,23 +125,20 @@ class JsonTemplateIntegrationTest {
     @Test
     void loopList_firstRowFieldsMatchExcelTemplate() throws Exception {
         var jsonParam = buildParam();
-        runImport(PRICELIST_DATELIST_JSON, jsonParam);
-        LoopDate fromJson = (LoopDate) jsonParam.getParamsMap().get("for.dateList").getLoopLst().get(0);
+        runImport(LIST1_USER_JSON, jsonParam);
+        LoopDate fromJson = (LoopDate) jsonParam.getParamsMap().get("for.user").getLoopLst().get(0);
 
         var xlsParam = buildParam();
-        try (InputStream tmpl = resource("02_RateModNotice_tmpl.xlsx");
-             InputStream data = resource("01_RateModNotice_tmpl.xlsx")) {
+        try (InputStream tmpl = resource("template.xlsx");
+             InputStream data = resource("template_data.xlsx")) {
             ExcelImportUtil.importExcel(xlsParam, tmpl, data);
         }
-        LoopDate fromXls = (LoopDate) xlsParam.getParamsMap().get("for.dateList").getLoopLst().get(0);
+        LoopDate fromXls = (LoopDate) xlsParam.getParamsMap().get("for.user").getLoopLst().get(0);
 
-        assertEquals(fromXls.getOrigin(),      fromJson.getOrigin(),      "origin");
-        assertEquals(fromXls.getDestination(), fromJson.getDestination(), "destination");
-        assertEquals(fromXls.getCode(),        fromJson.getCode(),        "code");
-        assertEquals(fromXls.getRoute(),       fromJson.getRoute(),       "route");
-        assertEquals(fromXls.getRate(),        fromJson.getRate(),        "rate");
-        assertEquals(fromXls.getChange(),      fromJson.getChange(),      "change");
-        assertEquals(fromXls.getBilling(),     fromJson.getBilling(),     "billing");
+        assertEquals(fromXls.getName(),       fromJson.getName(),       "name");
+        assertEquals(fromXls.getAge(),        fromJson.getAge(),        "age");
+        assertEquals(fromXls.getSalaryDate(), fromJson.getSalaryDate(), "salaryDate");
+        assertEquals(fromXls.getSalary(),     fromJson.getSalary(),     "salary");
     }
 
     // =================== combined ===================
@@ -182,32 +150,31 @@ class JsonTemplateIntegrationTest {
     @Test
     void combined_singleAndLoop_bothFilled() throws Exception {
         var param = buildParam();
-        runImport(PRICELIST_COMBINED_JSON, param);
+        runImport(LIST1_COMBINED_JSON, param);
 
         ExcelImport single = (ExcelImport) param.getParamsMap().get("test").getLoopLst().get(0);
-        assertNotNull(single.getAccount(),   "single: account");
-        assertNotNull(single.getCurrency(),  "single: currency");
+        assertNotNull(single.getCompany(), "single: company");
 
-        List<Object> loop = param.getParamsMap().get("for.dateList").getLoopLst();
+        List<Object> loop = param.getParamsMap().get("for.user").getLoopLst();
         assertFalse(loop.isEmpty(), "loop list must not be empty");
 
         LoopDate firstRow = (LoopDate) loop.get(0);
-        assertNotNull(firstRow.getRate(), "loop first row: rate");
+        assertNotNull(firstRow.getSalary(), "loop first row: salary");
     }
 
     // =================== helpers ===================
 
     private static ExcelImportParamCore buildParam() {
         var param = new ExcelImportParamCore();
-        param.getParamsMap().put("test",         new ImportInformation().setClazz(ExcelImport.class));
-        param.getParamsMap().put("for.dateList", new ImportInformation().setClazz(LoopDate.class));
+        param.getParamsMap().put("test",     new ImportInformation().setClazz(ExcelImport.class));
+        param.getParamsMap().put("for.user", new ImportInformation().setClazz(LoopDate.class));
         return param;
     }
 
     private void runImport(String json, ExcelImportParamCore param) throws Exception {
         var reader = new JsonTemplateReader(
                 new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)));
-        try (InputStream data = resource("01_RateModNotice_tmpl.xlsx")) {
+        try (InputStream data = resource("template_data.xlsx")) {
             ExcelImportUtil.importExcel(param, reader, data);
         }
     }

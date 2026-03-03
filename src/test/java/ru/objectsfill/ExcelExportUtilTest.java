@@ -22,11 +22,7 @@ class ExcelExportUtilTest {
     // JSON-шаблон: одиночный объект по позиции
     private static final String SINGLE_JSON = """
             {"entries": [
-              {"fieldName": "test.account",       "sheetName": "Sheet1", "cellAddress": {"row": 0, "col": 0}},
-              {"fieldName": "test.offerDate",     "sheetName": "Sheet1", "cellAddress": {"row": 1, "col": 0}},
-              {"fieldName": "test.currency",      "sheetName": "Sheet1", "cellAddress": {"row": 2, "col": 0}},
-              {"fieldName": "test.product",       "sheetName": "Sheet1", "cellAddress": {"row": 3, "col": 0}},
-              {"fieldName": "test.rateModNumber", "sheetName": "Sheet1", "cellAddress": {"row": 4, "col": 0}}
+              {"fieldName": "test.company", "sheetName": "Sheet1", "cellAddress": {"row": 0, "col": 0}}
             ]}
             """;
 
@@ -37,9 +33,9 @@ class ExcelExportUtilTest {
     // При импорте: HEADER mode — заголовок найден в row=0, данные читаются с row=1+.
     private static final String LOOP_JSON = """
             {"entries": [
-              {"fieldName": "for.dateList.origin",      "sheetName": "Sheet1", "cellAddress": {"row": 1, "col": 0}, "headerName": "ORIGIN"},
-              {"fieldName": "for.dateList.destination", "sheetName": "Sheet1", "cellAddress": {"row": 1, "col": 1}, "headerName": "DESTINATION"},
-              {"fieldName": "for.dateList.rate",        "sheetName": "Sheet1", "cellAddress": {"row": 1, "col": 2}, "headerName": "RATE"}
+              {"fieldName": "for.user.name",   "sheetName": "Sheet1", "cellAddress": {"row": 1, "col": 0}, "headerName": "NAME"},
+              {"fieldName": "for.user.age",    "sheetName": "Sheet1", "cellAddress": {"row": 1, "col": 1}, "headerName": "AGE"},
+              {"fieldName": "for.user.salary", "sheetName": "Sheet1", "cellAddress": {"row": 1, "col": 2}, "headerName": "SALARY"}
             ]}
             """;
 
@@ -56,38 +52,34 @@ class ExcelExportUtilTest {
                 new ByteArrayInputStream(xlsx));
 
         ExcelImport result = (ExcelImport) importParam.getParamsMap().get("test").getLoopLst().get(0);
-        assertEquals(source.getAccount(),       result.getAccount(),       "account");
-        assertEquals(source.getOfferDate(),     result.getOfferDate(),     "offerDate");
-        assertEquals(source.getCurrency(),      result.getCurrency(),      "currency");
-        assertEquals(source.getProduct(),       result.getProduct(),       "product");
-        assertEquals(source.getRateModNumber(), result.getRateModNumber(), "rateModNumber");
+        assertEquals(source.getCompany(), result.getCompany(), "company");
     }
 
     @Test
     void loopObjects_exportAndReimport_allRowsPresent() throws Exception {
         List<LoopDate> sourceList = List.of(
-                buildLoopDate("RU", "DE", "0.05"),
-                buildLoopDate("US", "FR", "0.12"),
-                buildLoopDate("CN", "GB", "0.08")
+                buildLoopDate("Alice", "30", "550"),
+                buildLoopDate("Bob",   "25", "430"),
+                buildLoopDate("Carol", "35", "670")
         );
 
         byte[] xlsx = exportLoop(LOOP_JSON, sourceList);
 
         ExcelImportParamCore importParam = new ExcelImportParamCore();
-        importParam.getParamsMap().put("for.dateList", new ImportInformation().setClazz(LoopDate.class));
+        importParam.getParamsMap().put("for.user", new ImportInformation().setClazz(LoopDate.class));
         ExcelImportUtil.importExcel(importParam,
                 new JsonTemplateReader(jsonStream(LOOP_JSON)),
                 new ByteArrayInputStream(xlsx));
 
-        List<Object> result = importParam.getParamsMap().get("for.dateList").getLoopLst();
+        List<Object> result = importParam.getParamsMap().get("for.user").getLoopLst();
         assertEquals(sourceList.size(), result.size(), "row count");
 
         for (int i = 0; i < sourceList.size(); i++) {
             LoopDate src = sourceList.get(i);
             LoopDate res = (LoopDate) result.get(i);
-            assertEquals(src.getOrigin(),      res.getOrigin(),      "origin[" + i + "]");
-            assertEquals(src.getDestination(), res.getDestination(), "destination[" + i + "]");
-            assertEquals(src.getRate(),        res.getRate(),        "rate[" + i + "]");
+            assertEquals(src.getName(),   res.getName(),   "name["   + i + "]");
+            assertEquals(src.getAge(),    res.getAge(),    "age["    + i + "]");
+            assertEquals(src.getSalary(), res.getSalary(), "salary[" + i + "]");
         }
     }
 
@@ -121,8 +113,8 @@ class ExcelExportUtilTest {
     void excelTemplate_singleObject_roundtrip() throws Exception {
         // import original data
         ExcelImportParamCore origParam = buildImportParam();
-        try (InputStream tmpl = resource("02_RateModNotice_tmpl.xlsx");
-             InputStream data = resource("01_RateModNotice_tmpl.xlsx")) {
+        try (InputStream tmpl = resource("template.xlsx");
+             InputStream data = resource("template_data.xlsx")) {
             ExcelImportUtil.importExcel(origParam, tmpl, data);
         }
         ExcelImport orig = (ExcelImport) origParam.getParamsMap().get("test").getLoopLst().get(0);
@@ -131,30 +123,26 @@ class ExcelExportUtilTest {
         ExcelExportParamCore exportParam = new ExcelExportParamCore();
         exportParam.getParamsMap().put("test", new ExportInformation().setDataList(List.of(orig)));
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        try (InputStream tmpl = resource("02_RateModNotice_tmpl.xlsx")) {
+        try (InputStream tmpl = resource("template.xlsx")) {
             ExcelExportUtil.exportExcel(exportParam, tmpl, out);
         }
 
         // re-import
         ExcelImportParamCore reimportParam = buildImportParam();
-        try (InputStream tmpl = resource("02_RateModNotice_tmpl.xlsx")) {
+        try (InputStream tmpl = resource("template.xlsx")) {
             ExcelImportUtil.importExcel(reimportParam, tmpl, new ByteArrayInputStream(out.toByteArray()));
         }
         ExcelImport result = (ExcelImport) reimportParam.getParamsMap().get("test").getLoopLst().get(0);
 
-        assertEquals(orig.getAccount(),       result.getAccount(),       "account");
-        assertEquals(orig.getOfferDate(),     result.getOfferDate(),     "offerDate");
-        assertEquals(orig.getCurrency(),      result.getCurrency(),      "currency");
-        assertEquals(orig.getProduct(),       result.getProduct(),       "product");
-        assertEquals(orig.getRateModNumber(), result.getRateModNumber(), "rateModNumber");
+        assertEquals(orig.getCompany(), result.getCompany(), "company");
     }
 
     @Test
     void excelTemplate_withStyles_singleObject_roundtrip() throws Exception {
         // import original data
         ExcelImportParamCore origParam = buildImportParam();
-        try (InputStream tmpl = resource("02_RateModNotice_tmpl.xlsx");
-             InputStream data = resource("01_RateModNotice_tmpl.xlsx")) {
+        try (InputStream tmpl = resource("template.xlsx");
+             InputStream data = resource("template_data.xlsx")) {
             ExcelImportUtil.importExcel(origParam, tmpl, data);
         }
         ExcelImport orig = (ExcelImport) origParam.getParamsMap().get("test").getLoopLst().get(0);
@@ -163,7 +151,7 @@ class ExcelExportUtilTest {
         ExcelExportParamCore exportParam = new ExcelExportParamCore();
         exportParam.getParamsMap().put("test", new ExportInformation().setDataList(List.of(orig)));
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        try (InputStream tmpl = resource("02_RateModNotice_tmpl.xlsx")) {
+        try (InputStream tmpl = resource("template.xlsx")) {
             ExcelExportUtil.exportExcelWithStyles(exportParam, tmpl, out);
         }
         assertTrue(out.size() > 0, "output must not be empty");
@@ -172,14 +160,11 @@ class ExcelExportUtilTest {
 
         // re-import — values must survive the styled export
         ExcelImportParamCore reimportParam = buildImportParam();
-        try (InputStream tmpl = resource("02_RateModNotice_tmpl.xlsx")) {
+        try (InputStream tmpl = resource("template.xlsx")) {
             ExcelImportUtil.importExcel(reimportParam, tmpl, new ByteArrayInputStream(out.toByteArray()));
         }
         ExcelImport result = (ExcelImport) reimportParam.getParamsMap().get("test").getLoopLst().get(0);
-        assertEquals(orig.getAccount(),       result.getAccount(),       "account");
-        assertEquals(orig.getCurrency(),      result.getCurrency(),      "currency");
-        assertEquals(orig.getProduct(),       result.getProduct(),       "product");
-        assertEquals(orig.getRateModNumber(), result.getRateModNumber(), "rateModNumber");
+        assertEquals(orig.getCompany(), result.getCompany(), "company");
     }
 
     @Test
@@ -190,7 +175,7 @@ class ExcelExportUtilTest {
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         assertDoesNotThrow(() -> {
-            try (InputStream tmpl = resource("02_RateModNotice_tmpl.xlsx")) {
+            try (InputStream tmpl = resource("template.xlsx")) {
                 ExcelExportUtil.exportExcelWithStyles(exportParam, tmpl, out, 10);
             }
         });
@@ -201,35 +186,35 @@ class ExcelExportUtilTest {
     void excelTemplate_loopObjects_firstRowRoundtrip() throws Exception {
         // import original data
         ExcelImportParamCore origParam = buildImportParam();
-        try (InputStream tmpl = resource("02_RateModNotice_tmpl.xlsx");
-             InputStream data = resource("01_RateModNotice_tmpl.xlsx")) {
+        try (InputStream tmpl = resource("template.xlsx");
+             InputStream data = resource("template_data.xlsx")) {
             ExcelImportUtil.importExcel(origParam, tmpl, data);
         }
-        List<Object> origLoop = origParam.getParamsMap().get("for.dateList").getLoopLst();
+        List<Object> origLoop = origParam.getParamsMap().get("for.user").getLoopLst();
         assertFalse(origLoop.isEmpty(), "original loop must not be empty");
 
         // export
         ExcelExportParamCore exportParam = new ExcelExportParamCore();
-        exportParam.getParamsMap().put("for.dateList", new ExportInformation().setDataList(origLoop));
+        exportParam.getParamsMap().put("for.user", new ExportInformation().setDataList(origLoop));
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        try (InputStream tmpl = resource("02_RateModNotice_tmpl.xlsx")) {
+        try (InputStream tmpl = resource("template.xlsx")) {
             ExcelExportUtil.exportExcel(exportParam, tmpl, out);
         }
 
         // re-import (template has 2 sheets with loop markers → more rows than original)
         ExcelImportParamCore reimportParam = buildImportParam();
-        try (InputStream tmpl = resource("02_RateModNotice_tmpl.xlsx")) {
+        try (InputStream tmpl = resource("template.xlsx")) {
             ExcelImportUtil.importExcel(reimportParam, tmpl, new ByteArrayInputStream(out.toByteArray()));
         }
-        List<Object> result = reimportParam.getParamsMap().get("for.dateList").getLoopLst();
+        List<Object> result = reimportParam.getParamsMap().get("for.user").getLoopLst();
         assertFalse(result.isEmpty(), "re-imported loop must not be empty");
 
-        // first row must match (comes from first sheet "Pricelist")
-        LoopDate origFirst = (LoopDate) origLoop.get(0);
+        // first row must match (comes from first sheet "List1")
+        LoopDate origFirst  = (LoopDate) origLoop.get(0);
         LoopDate resultFirst = (LoopDate) result.get(0);
-        assertEquals(origFirst.getOrigin(),      resultFirst.getOrigin(),      "origin[0]");
-        assertEquals(origFirst.getDestination(), resultFirst.getDestination(), "destination[0]");
-        assertEquals(origFirst.getRate(),        resultFirst.getRate(),        "rate[0]");
+        assertEquals(origFirst.getName(),   resultFirst.getName(),   "name[0]");
+        assertEquals(origFirst.getAge(),    resultFirst.getAge(),    "age[0]");
+        assertEquals(origFirst.getSalary(), resultFirst.getSalary(), "salary[0]");
     }
 
     // --- helpers ---
@@ -246,7 +231,7 @@ class ExcelExportUtilTest {
 
     private byte[] exportLoop(String json, List<LoopDate> data) {
         ExcelExportParamCore exportParam = new ExcelExportParamCore();
-        exportParam.getParamsMap().put("for.dateList",
+        exportParam.getParamsMap().put("for.user",
                 new ExportInformation().setDataList(List.copyOf(data)));
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -260,8 +245,8 @@ class ExcelExportUtilTest {
 
     private static ExcelImportParamCore buildImportParam() {
         ExcelImportParamCore param = new ExcelImportParamCore();
-        param.getParamsMap().put("test", new ImportInformation().setClazz(ExcelImport.class));
-        param.getParamsMap().put("for.dateList", new ImportInformation().setClazz(LoopDate.class));
+        param.getParamsMap().put("test",     new ImportInformation().setClazz(ExcelImport.class));
+        param.getParamsMap().put("for.user", new ImportInformation().setClazz(LoopDate.class));
         return param;
     }
 
@@ -271,19 +256,15 @@ class ExcelExportUtilTest {
 
     private static ExcelImport buildSingleObject() {
         ExcelImport obj = new ExcelImport();
-        obj.setAccount("ACC-001");
-        obj.setOfferDate("2025-01-15");
-        obj.setCurrency("USD");
-        obj.setProduct("Premium");
-        obj.setRateModNumber("RM-42");
+        obj.setCompany("ACME Corp");
         return obj;
     }
 
-    private static LoopDate buildLoopDate(String origin, String destination, String rate) {
+    private static LoopDate buildLoopDate(String name, String age, String salary) {
         LoopDate ld = new LoopDate();
-        ld.setOrigin(origin);
-        ld.setDestination(destination);
-        ld.setRate(rate);
+        ld.setName(name);
+        ld.setAge(age);
+        ld.setSalary(salary);
         return ld;
     }
 }
